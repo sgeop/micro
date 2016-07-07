@@ -15,11 +15,20 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
+
   exposed-modules:     Server
+                     , Models
+
   build-depends:       base >= 4.7 && < 5
+                     , text
                      , servant
                      , servant-server
+                     , persistent
+                     , persistent-sqlite
+                     , persistent-template
+                     , esqueleto
                      , lucid
+                     , transformers
                      , mtl
                      , base-compat
                      , time
