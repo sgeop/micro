@@ -51,9 +51,12 @@ executable micro-exe
   main-is:             Main.hs
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   build-depends:       base
+                     , text
                      , micro
                      , servant
                      , servant-server
+                     , persistent
+                     , persistent-sqlite
                      , wai
                      , warp
 

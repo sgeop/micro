@@ -1,6 +1,8 @@
 {-# LANGUAGE EmptyDataDecls             #-}
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE RankNTypes                 #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
@@ -13,15 +15,15 @@
 module Models where
 
 import Data.Aeson
-import Data.Text
 import GHC.Generics (Generic)
-import Database.Persist.Sqlite
+import Database.Persist.Sqlite (runSqlite)
 import Database.Persist.TH
+import Database.Esqueleto
 import Control.Monad.IO.Class
 
 
 share [mkPersist sqlSettings, mkMigrate "migrateAll"] [persistLowerCase|
-User
+User json
   firstName String
   lastName String
   age Int
@@ -29,11 +31,30 @@ User
   deriving Show
 |]
 
-run :: IO ()
-run = runSqlite ":memory" $ do
+
+type SqlResult a = forall (m :: * -> *). MonadIO m => SqlPersistT m a
+
+
+setupDB :: SqlResult ()
+setupDB = do
   runMigration migrateAll
-  deleteWhere [UserFirstName ==. "Joe"]
-  insert $ User "Joe" "Schmoe" 25 "joeschmoe99@gmail.com"
-  insert $ User "Jeff" "Brown" 12 "jb12345@yahoo.com"
-  adults <- selectList [UserAge >. 18, UserAge <. 30] [LimitTo 2]
-  liftIO $ print adults
+  insertMany
+    [ User "Joe" "Schmoe" 25 "joeschmoe99@gmail.com"
+    , User "Jeff" "Brown" 12 "jb12345@yahoo.com"
+    ]
+  return ()
+
+allUsers :: SqlResult [User]
+allUsers = do
+  u <- select $
+       from $ \user ->
+       return user
+  return $ map entityVal u
+
+userByEmail :: String -> SqlResult [User]
+userByEmail a = do
+  u <- select $
+       from $ \user -> do
+       where_ (user ^. UserEmail ==. val a)
+       return user
+  return $ map entityVal u

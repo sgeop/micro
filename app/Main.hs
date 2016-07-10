@@ -5,6 +5,7 @@ import Network.Wai
 import Network.Wai.Handler.Warp
 
 import Server
+import Models
 
 app :: Application
 app = serve userApi server

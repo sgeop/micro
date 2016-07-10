@@ -1,5 +1,4 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings #-}
@@ -20,6 +19,8 @@ import Data.List
 import Data.Maybe
 import Data.String.Conversions
 import Data.Time.Calendar
+import Data.Text
+import Database.Persist.Sqlite (runSqlite)
 import GHC.Generics
 import Lucid
 import Network.HTTP.Media ((//), (/:))
@@ -32,36 +33,25 @@ import Text.Blaze.Html.Renderer.Utf8
 import qualified Data.Aeson.Parser
 import qualified Text.Blaze.Html
 
+import Models
 
 type UserApi = "users" :> Get '[JSON] [User]
-          :<|> "user" :> Capture "uid" Int :> Get '[JSON] User
-
-
-data User = User
-  { userId :: Int
-  , firstName :: String
-  , lastName :: String
-  , age :: Int
-  , email :: String
-  } deriving (Eq, Show, Generic)
-
-instance ToJSON User
-
-
-userList =
-  [ User 1 "Joe" "Schmoe" 25 "joeschmoe99@gmail.com"
-  , User 2 "Jane" "Jacobs" 32 "plain_jain12345@yahoo.com"
-  ]
+          :<|> "user" :> QueryParam "email" String :> Get '[JSON] [User]
 
 
 server :: Server UserApi
 server = users :<|> user
 
   where users :: Handler [User]
-        users = return userList
+        users = runSqlite "db" allUsers
 
-        user :: Int -> Handler User
-        user uid = return (head $ filter (\u -> userId u == uid) userList)
+        user :: Maybe String -> Handler [User]
+        user  Nothing = runSqlite "db" allUsers
+        user  (Just email) = do
+            u <- runSqlite "db" $ userByEmail email
+            case u of
+              [] -> throwError err503 { errBody = "email not found" }
+              _ -> return u
 
 
 userApi :: Proxy UserApi
