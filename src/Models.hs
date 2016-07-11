@@ -43,31 +43,3 @@ setupDB = do
     , User "Jeff" "Brown" 12 "jb12345@yahoo.com"
     ]
   return ()
-
-
-allUsers :: SqlResult [User]
-allUsers = do
-  u <- selectList [] []
-  return $ map entityVal u
-
-
-userByEmail :: String -> SqlResult [User]
-userByEmail a = do
-  u <- selectList [UserEmail ==. a] []
-  return $ map entityVal u
-
-
-userSearch
-  :: PersistField a
-  => [(EntityField User a, Maybe a)]
-  -> SqlResult [User]
-userSearch params = do
-      u <- selectList (mapMaybe (uncurry f) params) []
-      return $ map entityVal u
-        where f ef = fmap (ef ==.)
-
--- userSelect :: PersistEntity a => [Filter a] -> SqlResult [a]
--- userSelect filtr = do
---       u <- selectList filtr []
---       return $ map entityVal u
-
