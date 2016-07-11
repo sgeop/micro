@@ -41,9 +41,7 @@ userHandler fname lname age email = do
       , fmap (UserAge ==.) age
       , fmap (UserEmail ==.) email
       ]) []
-  case map entityVal res of
-    [] -> throwError err503 { errBody = "user not found" }
-    u -> return u
+  return $ map entityVal res
 
 
 server :: Server UserApi
