@@ -19,7 +19,6 @@ import Data.List
 import Data.Maybe
 import Data.String.Conversions
 import Data.Time.Calendar
-import Data.Text
 import Database.Persist.Sqlite (runSqlite)
 import GHC.Generics
 import Lucid
@@ -35,24 +34,31 @@ import qualified Text.Blaze.Html
 
 import Models
 
-type UserApi = "users" :> Get '[JSON] [User]
-          :<|> "user" :> QueryParam "email" String :> Get '[JSON] [User]
+type UserApi = "user"
+  :> QueryParam "first_name" String
+  :> QueryParam "last_name" String
+  :> QueryParam "email" String
+  :> Get '[JSON] [User]
+
+userHandler
+  :: Maybe String
+  -> Maybe String
+  -> Maybe String
+  -> Handler [User]
+userHandler fn ln email = do
+  u <- runSqlite "db" $ userSearch
+    [ (UserFirstName, fn)
+    , (UserLastName, ln)
+    , (UserEmail, email)
+    ]
+  case u of
+    [] -> throwError err503 { errBody = "email not found" }
+    _ -> return u
 
 
 server :: Server UserApi
-server = users :<|> user
-
-  where users :: Handler [User]
-        users = runSqlite "db" allUsers
-
-        user :: Maybe String -> Handler [User]
-        user  Nothing = runSqlite "db" allUsers
-        user  (Just email) = do
-            u <- runSqlite "db" $ userByEmail email
-            case u of
-              [] -> throwError err503 { errBody = "email not found" }
-              _ -> return u
-
+server = userHandler
 
 userApi :: Proxy UserApi
 userApi = Proxy
+

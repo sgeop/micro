@@ -1,4 +1,5 @@
 {-# LANGUAGE EmptyDataDecls             #-}
+{-# LANGUAGE AllowAmbiguousTypes        #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
@@ -15,10 +16,10 @@
 module Models where
 
 import Data.Aeson
+import Data.Maybe (mapMaybe)
 import GHC.Generics (Generic)
-import Database.Persist.Sqlite (runSqlite)
+import Database.Persist.Sqlite
 import Database.Persist.TH
-import Database.Esqueleto
 import Control.Monad.IO.Class
 
 
@@ -34,7 +35,6 @@ User json
 
 type SqlResult a = forall (m :: * -> *). MonadIO m => SqlPersistT m a
 
-
 setupDB :: SqlResult ()
 setupDB = do
   runMigration migrateAll
@@ -44,17 +44,30 @@ setupDB = do
     ]
   return ()
 
+
 allUsers :: SqlResult [User]
 allUsers = do
-  u <- select $
-       from $ \user ->
-       return user
+  u <- selectList [] []
   return $ map entityVal u
+
 
 userByEmail :: String -> SqlResult [User]
 userByEmail a = do
-  u <- select $
-       from $ \user -> do
-       where_ (user ^. UserEmail ==. val a)
-       return user
+  u <- selectList [UserEmail ==. a] []
   return $ map entityVal u
+
+
+userSearch
+  :: PersistField a
+  => [(EntityField User a, Maybe a)]
+  -> SqlResult [User]
+userSearch params = do
+      u <- selectList (mapMaybe (uncurry f) params) []
+      return $ map entityVal u
+        where f ef = fmap (ef ==.)
+
+-- userSelect :: PersistEntity a => [Filter a] -> SqlResult [a]
+-- userSelect filtr = do
+--       u <- selectList filtr []
+--       return $ map entityVal u
+
